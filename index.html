@@ -114,13 +114,18 @@ main{max-width:760px;margin:0 auto;padding:20px 16px 48px;display:grid;gap:16px}
 <script src="q-boca.js" charset="utf-8"></script>
 <script src="q-faringe.js" charset="utf-8"></script>
 <script src="q-laringe.js" charset="utf-8"></script>
+<script src="ordem-pdf.js" charset="utf-8"></script>
 <script>
 (function(){
-  var KEY = "simulado-otorrino-1";
+  var KEY = "simulado-otorrino-1-pdf";
   var LETRAS = ["A","B","C","D","E"];
   var BANK = {};
   window.QUESTOES.forEach(function(q){ BANK[q.id] = q; });
-  var ALL = Object.keys(BANK);
+  // Ordem fixa do PDF: questões e alternativas na mesma sequência do PDF e do gabarito
+  var PDF_PERM = {}, PDF_NUM = {}, PDF_ORDER = [];
+  (window.ORDEM_PDF || []).forEach(function(r, i){ if (BANK[r[0]]){ PDF_ORDER.push(r[0]); PDF_PERM[r[0]] = r[1]; PDF_NUM[r[0]] = i+1; } });
+  Object.keys(BANK).forEach(function(id){ if (!PDF_PERM[id]){ PDF_ORDER.push(id); PDF_PERM[id] = [0,1,2,3,4]; } });
+  var ALL = PDF_ORDER;
   var app = document.getElementById("app");
   var S = null;           // estado
   var openJust = false;   // painel de justificativas aberto na questão atual
@@ -132,9 +137,9 @@ main{max-width:760px;margin:0 auto;padding:20px 16px 48px;display:grid;gap:16px}
   function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]; }); }
 
   function novo(ids, mode){
-    var perm = {};
-    ids.forEach(function(id){ perm[id] = shuffle([0,1,2,3,4]); });
-    S = { order: shuffle(ids), perm: perm, ans: {}, pos: 0, mode: mode || "geral" };
+    var perm = {}, keep = {};
+    ids.forEach(function(id){ perm[id] = PDF_PERM[id].slice(); keep[id] = 1; });
+    S = { order: PDF_ORDER.filter(function(id){ return keep[id]; }), perm: perm, ans: {}, pos: 0, mode: mode || "geral" };
     openJust = false; save(); render();
   }
 
@@ -159,7 +164,7 @@ main{max-width:760px;margin:0 auto;padding:20px 16px 48px;display:grid;gap:16px}
     var answered = ans !== undefined, right = answered && q.alternativas[ans].ok;
     if (answered && !right) openJust = true;
     var h = '<div class="meta"><span>Questão ' + (S.pos+1) + ' de ' + S.order.length + '</span>' +
-      (S.mode==="erradas" ? '<span class="mode">Refazendo erradas</span>' : '') + '</div>';
+      (S.mode==="erradas" ? '<span class="mode">Refazendo erradas · nº ' + PDF_NUM[id] + ' do PDF</span>' : '') + '</div>';
     h += '<section class="card"><p class="enun">' + esc(q.enunciado) + '</p><ul class="alts">';
     perm.forEach(function(oi, k){
       var a = q.alternativas[oi], cls = "";
